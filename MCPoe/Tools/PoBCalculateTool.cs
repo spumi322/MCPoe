@@ -18,14 +18,12 @@ public sealed class PoBCalculateTool
     }
 
     [McpServerTool(Name = "calculate_build")]
-    [Description("Calculate DPS and stats for a Path of Exile build using the Path of Building engine.")]
-    public async Task<string> CalculateBuildAsync(
-        [Description("The pastebin/PoB build code to evaluate.")] string build_code)
+    [Description("Spin up a fresh Path of Building build via the headless engine and return its base stats. POC stage: build code import not yet supported.")]
+    public async Task<string> CalculateBuildAsync(CancellationToken ct)
     {
         try
         {
-            _ = await _pobService.CalculateBuildAsync(build_code);
-            return "Not implemented yet. This tool will be available in P1.";
+            return await _pobService.CalculateNewBuildAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -9,10 +9,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
-var logPath = new ConfigurationBuilder()
+var configuredLogPath = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: true)
     .Build()["Logging:LogPath"] ?? "logs/mcpoe-.log";
+
+var logPath = Path.IsPathRooted(configuredLogPath)
+    ? configuredLogPath
+    : Path.Combine(AppContext.BaseDirectory, configuredLogPath);
 
 var logDir = Path.GetDirectoryName(logPath);
 if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))

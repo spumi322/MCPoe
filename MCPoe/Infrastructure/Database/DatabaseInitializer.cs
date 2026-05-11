@@ -17,12 +17,15 @@ public sealed class DatabaseInitializer
 
     public void Initialize()
     {
-        var vectorsPath = _configuration["Database:VectorsPath"] ?? "data/vectors.db";
-        var modsPath = _configuration["Database:ModsPath"] ?? "data/mods.db";
+        var vectorsPath = ResolvePath(_configuration["Database:VectorsPath"] ?? "data/vectors.db");
+        var modsPath = ResolvePath(_configuration["Database:ModsPath"] ?? "data/mods.db");
 
         EnsureDatabase(vectorsPath);
         EnsureDatabase(modsPath);
     }
+
+    private static string ResolvePath(string path) =>
+        Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
 
     private void EnsureDatabase(string path)
     {
