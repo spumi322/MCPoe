@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MCPoe.Tests/MCPoe.Tests.csproj" />
+  <Project Path="MCPoe/MCPoe.csproj" />
+</Solution>
