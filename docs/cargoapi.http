@@ -1,0 +1,70 @@
+### =============================================================================
+### P1b: Cargo API Schema Discovery -- Headhunter
+### =============================================================================
+### Run each query, dump the JSON response. The output defines your SQLite schema.
+### If a query returns an error about unknown fields, remove that field and retry.
+###
+### NOTE: The Cargo API wraps every row in {"cargoquery": [{"title": {...}}]}
+### Max limit per call is 500. Pagination via offset parameter.
+### =============================================================================
+
+### ---------------------------------------------------------------------------
+### 1. Items table (core item data)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items&fields=items._pageName=pageName,items._pageID=pageID,name,class_id,rarity_id,base_item,base_item_page,metadata_id,frame_type,size_x,size_y,drop_enabled,drop_level,drop_level_maximum,tags,is_in_game,is_drop_restricted,release_version,removal_version,inventory_icon,html,flavour_text,implicit_stat_text,explicit_stat_text,stat_text,drop_areas,drop_monsters,drop_text,acquisition_tags&where=name=%22Headhunter%22%20AND%20rarity_id=%22unique%22&format=json
+
+### 2. Item mods (which mods are on the item)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_mods&join_on=items._pageID=item_mods._pageID&fields=item_mods.id,item_mods.text,item_mods.is_implicit,item_mods.is_random&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 3. Item stats (aggregated stat values on the item)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_stats&join_on=items._pageID=item_stats._pageID&fields=item_stats.id,item_stats.min,item_stats.max&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 4. Mods detail (full modifier definitions)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_mods,mods&join_on=items._pageID=item_mods._pageID,item_mods.id=mods.id&fields=mods.id,mods.stat_text,mods.generation_type,mods.domain,mods.required_level&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 5. Mod stats (per-mod stat ranges)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_mods,mods,mod_stats&join_on=items._pageID=item_mods._pageID,item_mods.id=mods.id,mods._pageName=mod_stats._pageName&fields=mods.id,mod_stats.id=stat_id,mod_stats.min,mod_stats.max&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 6. Item sell prices
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_sell_prices&join_on=items._pageID=item_sell_prices._pageID&fields=item_sell_prices.name,item_sell_prices.amount&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 7. Spawn weights (where mods can appear)
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_mods,mods,spawn_weights&join_on=items._pageID=item_mods._pageID,item_mods.id=mods.id,mods._pageName=spawn_weights._pageName&fields=mods.id,spawn_weights.tag,spawn_weights.weight&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 8. Legacy variants
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,legacy_variants&join_on=items._pageID=legacy_variants._pageID&fields=legacy_variants.removal_version,legacy_variants.implicit_stat_text,legacy_variants.explicit_stat_text,legacy_variants.stat_text,legacy_variants.base_item,legacy_variants.required_level&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### ---------------------------------------------------------------------------
+### 9. Item purchase costs
+### ---------------------------------------------------------------------------
+
+GET https://www.poewiki.net/w/api.php?action=cargoquery&tables=items,item_purchase_costs&join_on=items._pageID=item_purchase_costs._pageID&fields=item_purchase_costs.name,item_purchase_costs.amount&where=items.name=%22Headhunter%22%20AND%20items.rarity_id=%22unique%22&format=json
+
+### =============================================================================
+### NEXT STEPS:
+### 1. Run all 9 queries, save each response
+### 2. For any that error on unknown fields -- remove the field, retry
+### 3. For any that return empty -- that table doesn't apply to this item (ok)
+### 4. The union of all responses IS your mods.db SQLite schema
+### =============================================================================

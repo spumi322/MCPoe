@@ -55,10 +55,12 @@ try
     builder.Logging.ClearProviders();
     builder.Services.AddSerilog();
 
+    builder.Services.AddHttpClient();
     builder.Services.AddSingleton<IWikiSearchService, WikiSearchService>();
     builder.Services.AddSingleton<IModsDbService, ModsDbService>();
     builder.Services.AddSingleton<IPoBService, PoBService>();
     builder.Services.AddSingleton<DatabaseInitializer>();
+    builder.Services.AddSingleton<HeadhunterSeeder>();
 
     builder.Services
         .AddMcpServer()
@@ -68,6 +70,15 @@ try
     using var host = builder.Build();
 
     host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+
+    try
+    {
+        await host.Services.GetRequiredService<HeadhunterSeeder>().SeedAsync();
+    }
+    catch (Exception seedEx)
+    {
+        Log.Error(seedEx, "Headhunter seed failed; lookup_item will return empty results until resolved");
+    }
 
     Log.Information("MCPoe server starting (stdio transport)");
     await host.RunAsync();
