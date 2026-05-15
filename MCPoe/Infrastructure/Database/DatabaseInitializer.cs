@@ -29,8 +29,24 @@ public sealed class DatabaseInitializer
     public static string ResolveModsPath(IConfiguration configuration) =>
         ResolvePath(configuration["Database:ModsPath"] ?? "data/mods.db");
 
-    private static string ResolvePath(string path) =>
-        Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
+    public static string ResolveVectorsPath(IConfiguration configuration) =>
+        ResolvePath(configuration["Database:VectorsPath"] ?? "data/vectors.db");
+
+    private static string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        var cwdPath = Path.Combine(Directory.GetCurrentDirectory(), path);
+        if (File.Exists(cwdPath))
+        {
+            return cwdPath;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, path);
+    }
 
     private void EnsureDatabase(string path)
     {

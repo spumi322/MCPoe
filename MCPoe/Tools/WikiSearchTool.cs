@@ -24,8 +24,7 @@ public sealed class WikiSearchTool
     {
         try
         {
-            _ = await _wikiSearchService.SearchAsync(query);
-            return "Not implemented yet. This tool will be available in P1.";
+            return await _wikiSearchService.SearchAsync(query);
         }
         catch (Exception ex)
         {

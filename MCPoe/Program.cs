@@ -50,12 +50,15 @@ try
 
     builder.Configuration
         .SetBasePath(AppContext.BaseDirectory)
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddUserSecrets<Program>(optional: true)
+        .AddEnvironmentVariables();
 
     builder.Logging.ClearProviders();
     builder.Services.AddSerilog();
 
     builder.Services.AddHttpClient();
+    builder.Services.AddSingleton<IEmbeddingService, VoyageEmbeddingService>();
     builder.Services.AddSingleton<IWikiSearchService, WikiSearchService>();
     builder.Services.AddSingleton<IModsDbService, ModsDbService>();
     builder.Services.AddSingleton<IPoBService, PoBService>();
