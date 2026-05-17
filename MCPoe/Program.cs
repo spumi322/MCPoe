@@ -1,7 +1,7 @@
 using MCPoe.Application.Interfaces;
 using MCPoe.Infrastructure.Database;
-using MCPoe.Infrastructure.ModsDb;
 using MCPoe.Infrastructure.PoB;
+using MCPoe.Infrastructure.PoeWikiDb;
 using MCPoe.Infrastructure.Wiki;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,28 +60,19 @@ try
     builder.Services.AddHttpClient();
     builder.Services.AddSingleton<IEmbeddingService, VoyageEmbeddingService>();
     builder.Services.AddSingleton<IWikiSearchService, WikiSearchService>();
-    builder.Services.AddSingleton<IModsDbService, ModsDbService>();
+    builder.Services.AddSingleton<IPoeWikiDbService, PoeWikiDbService>();
     builder.Services.AddSingleton<IPoBService, PoBService>();
     builder.Services.AddSingleton<DatabaseInitializer>();
-    builder.Services.AddSingleton<HeadhunterSeeder>();
 
     builder.Services
         .AddMcpServer()
         .WithStdioServerTransport()
-        .WithToolsFromAssembly();
+        .WithToolsFromAssembly()
+        .WithResourcesFromAssembly();
 
     using var host = builder.Build();
 
     host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
-
-    try
-    {
-        await host.Services.GetRequiredService<HeadhunterSeeder>().SeedAsync();
-    }
-    catch (Exception seedEx)
-    {
-        Log.Error(seedEx, "Headhunter seed failed; lookup_item will return empty results until resolved");
-    }
 
     Log.Information("MCPoe server starting (stdio transport)");
     await host.RunAsync();

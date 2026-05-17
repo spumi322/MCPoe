@@ -1,12 +1,11 @@
 using MCPoe.Application.Interfaces;
+using MCPoe.Application.Models;
 using MCPoe.Infrastructure.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace MCPoe.Infrastructure.Wiki;
 
@@ -15,12 +14,6 @@ public sealed class WikiSearchService : IWikiSearchService
     private const int DefaultLimit = 6;
     private const int MaxContentChars = 900;
     private const float MinVectorScore = 0.2f;
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 
     private readonly IConfiguration _configuration;
     private readonly ILogger<WikiSearchService> _logger;
@@ -230,19 +223,14 @@ public sealed class WikiSearchService : IWikiSearchService
         int searchedChunks,
         IReadOnlyList<WikiChunkResult> rows)
     {
-        var response = new WikiSearchResponse(
-            Status: "OK",
-            Grounded: true,
-            MustAnswerFromResults: true,
-            Instruction: "Answer only from the returned chunks. If the chunks do not contain the needed fact, say MCPoe wiki search did not provide enough evidence.",
-            Query: query.Trim(),
-            Retrieval: new RetrievalInfo(
+        var metadata = new RetrievalInfo(
                 Mode: "vector",
                 EmbeddingModel: model,
                 SearchedChunks: searchedChunks,
                 ReturnedChunks: rows.Count,
-                MinScore: MinVectorScore),
-            Results: rows.Select((row, index) => new WikiSearchResult(
+                MinScore: MinVectorScore);
+
+        var results = rows.Select((row, index) => new WikiSearchResult(
                 Rank: index + 1,
                 Title: row.Title,
                 Section: row.Section,
@@ -251,27 +239,33 @@ public sealed class WikiSearchService : IWikiSearchService
                 RagTier: row.RagTier,
                 Score: Math.Round(row.Score, 4),
                 Source: row.CleanPath,
-                Excerpt: Truncate(row.Content, MaxContentChars))).ToList(),
-            Error: null);
+                Excerpt: Truncate(row.Content, MaxContentChars))).ToList();
 
-        return JsonSerializer.Serialize(response, JsonOptions);
+        return McpToolResponse.Serialize(
+            status: "OK",
+            grounded: true,
+            mustAnswerFromResults: true,
+            instruction: "Answer only from the returned chunks. If the chunks do not contain the needed fact, say MCPoe wiki search did not provide enough evidence.",
+            tool: "search_wiki",
+            query: query.Trim(),
+            metadata: metadata,
+            results: results);
     }
 
     private static string FormatFailure(string status, string query, string reason)
     {
-        var response = new WikiSearchResponse(
-            Status: status,
-            Grounded: false,
-            MustAnswerFromResults: false,
-            Instruction: status == "NO_RESULTS"
+        return McpToolResponse.Serialize(
+            status: status,
+            grounded: false,
+            mustAnswerFromResults: false,
+            instruction: status == "NO_RESULTS"
                 ? "Do not infer unsupported mechanics from this tool call. Tell the user MCPoe wiki search found no grounded result."
                 : "Do not answer using MCPoe wiki data from this tool call. Tell the user the wiki search tool failed and include the reason.",
-            Query: query.Trim(),
-            Retrieval: null,
-            Results: [],
-            Error: new WikiSearchError(reason));
-
-        return JsonSerializer.Serialize(response, JsonOptions);
+            tool: "search_wiki",
+            query: query.Trim(),
+            metadata: new { },
+            results: Array.Empty<object>(),
+            error: new McpToolError(reason));
     }
 
     private static string Truncate(string value, int maxChars)
@@ -339,16 +333,6 @@ public sealed class WikiSearchService : IWikiSearchService
         string CleanPath,
         double Score);
 
-    private sealed record WikiSearchResponse(
-        string Status,
-        bool Grounded,
-        bool MustAnswerFromResults,
-        string Instruction,
-        string Query,
-        RetrievalInfo? Retrieval,
-        IReadOnlyList<WikiSearchResult> Results,
-        WikiSearchError? Error);
-
     private sealed record RetrievalInfo(
         string Mode,
         string EmbeddingModel,
@@ -367,5 +351,4 @@ public sealed class WikiSearchService : IWikiSearchService
         string Source,
         string Excerpt);
 
-    private sealed record WikiSearchError(string Reason);
 }

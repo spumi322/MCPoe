@@ -38,6 +38,7 @@ public sealed class WikiSearchServiceTests : IDisposable
         Assert.Equal("ERROR", json.RootElement.GetProperty("status").GetString());
         Assert.False(json.RootElement.GetProperty("grounded").GetBoolean());
         Assert.False(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
+        Assert.Equal("search_wiki", json.RootElement.GetProperty("tool").GetString());
         Assert.Contains("wiki_embeddings", json.RootElement.GetProperty("error").GetProperty("reason").GetString());
         Assert.Contains("Do not answer", json.RootElement.GetProperty("instruction").GetString());
     }
@@ -61,7 +62,8 @@ public sealed class WikiSearchServiceTests : IDisposable
         Assert.Equal("OK", json.RootElement.GetProperty("status").GetString());
         Assert.True(json.RootElement.GetProperty("grounded").GetBoolean());
         Assert.True(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
-        Assert.Equal("vector", json.RootElement.GetProperty("retrieval").GetProperty("mode").GetString());
+        Assert.Equal("search_wiki", json.RootElement.GetProperty("tool").GetString());
+        Assert.Equal("vector", json.RootElement.GetProperty("metadata").GetProperty("mode").GetString());
         Assert.Equal("Righteous Fire", json.RootElement.GetProperty("results")[0].GetProperty("title").GetString());
         Assert.DoesNotContain("Cold Snap", result);
     }

@@ -17,14 +17,14 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 - C# / .NET 10
 - `ModelContextProtocol` NuGet package (official C# MCP SDK, v1.0)
 - Stdio transport (Claude Desktop launches the .exe)
-- SQLite (two databases: vectors.db, mods.db)
+- SQLite (two databases: vectors.db, poe_wiki.db)
 - sqlite-vec (vector search extension)
 - Voyage AI (embeddings)
 - LuaJIT + forked PathOfBuilding (headless calculation engine)
 - Serilog (structured logging)
 - xUnit + Moq (testing)
 
-**Architecture:** Single project with namespace separation. Application (interfaces, contracts), Infrastructure (Wiki, ModsDb, PoB), Models, Tools, Program.cs. Test project separate.
+**Architecture:** Single project with namespace separation. Application (interfaces, contracts), Infrastructure (Wiki, PoeWikiDb, PoB), Models, Tools, Program.cs. Test project separate.
 
 ---
 
@@ -52,7 +52,7 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 - [ ] Single project with namespace separation:
   - `Application/` -- interfaces, tool handler contracts
   - `Infrastructure/Wiki/` -- Tool 1 implementations
-  - `Infrastructure/ModsDb/` -- Tool 2 implementations
+  - `Infrastructure/PoeWikiDb/` -- Tool 2 implementations
   - `Infrastructure/PoB/` -- Tool 3 implementations
   - `Models/` -- shared DTOs, request/response types
   - `Tools/` -- MCP tool registrations, descriptions
@@ -61,7 +61,7 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 - [ ] Serilog with structured logging
 - [ ] Global error handling: tool calls return structured errors to the LLM, never crash the server
 - [ ] Interface-driven DI: abstractions in Application, implementations in Infrastructure
-- [ ] SQLite setup: two database files (vectors.db, mods.db), connection management, base repository pattern
+- [ ] SQLite setup: two database files (vectors.db, poe_wiki.db), connection management, base repository pattern
 - [ ] Test project: `MCPoe.Tests` with xUnit + Moq
 - [ ] One dummy tool to verify end-to-end MCP handshake with Claude Desktop
 
@@ -81,10 +81,10 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 - [ ] Register as MCP tool: accepts a PoB build code, returns basic stats (DPS, life, ES)
 - [ ] Test: paste a build code to Claude, get real calculated numbers back
 
-### P1b: Tool 2 -- Mods DB (minimal)
+### P1b: Tool 2 -- PoE Wiki DB (minimal)
 
-- [ ] C# script/command that calls Cargo API for one table (e.g., unique items), dumps into mods.db
-- [ ] One MCP tool: `lookup_item` -- takes item name, queries SQLite, returns mods/stats
+- [ ] C# script/command that calls Cargo API for one table (e.g., unique items), dumps into poe_wiki.db
+- [ ] One MCP tool to prove SQLite wiring against a small sample table
 - [ ] Test: ask Claude about a unique item, get real mod data back
 
 ### P1c: Tool 1 -- Wiki RAG (minimal)
@@ -109,7 +109,7 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 
 ---
 
-## P3: Tool 2 -- Mods DB (full)
+## P3: Tool 2 -- PoE Wiki DB (full)
 
 **Goal:** Comprehensive item/mod database with rich query tools.
 
@@ -129,7 +129,7 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 - [ ] sqlite-vec for indexed vector search
 - [ ] Embedding cache (content-hash based, avoid re-embedding unchanged content)
 - [ ] Search tuning: TopK, MinScore calibrated for PoE queries
-- [ ] Tool descriptions tuned so the LLM knows when to use wiki vs mods DB
+- [ ] Tool descriptions tuned so the LLM knows when to use wiki search vs PoE Wiki DB
 
 ---
 
@@ -146,7 +146,7 @@ A self-hosted C# MCP server for Path of Exile 1 character build analysis. Stdio 
 
 ## Key Decisions
 
-- **Two separate SQLite databases:** vectors.db for wiki embeddings, mods.db for structured data
+- **Two separate SQLite databases:** vectors.db for wiki embeddings, poe_wiki.db for structured PoE Wiki data
 - **LLM orchestrates tool calls:** tools are independent, LLM decides which to call and in what order
 - **Stale data is acceptable:** wiki and mod data refreshed manually, not live-synced
 - **Stdio transport:** simplest self-hosting, no web server, no auth. Upgradeable to SSE/HTTP later without architectural changes

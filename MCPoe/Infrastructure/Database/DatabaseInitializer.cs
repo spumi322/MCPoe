@@ -1,4 +1,3 @@
-using System.Reflection;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -19,15 +18,12 @@ public sealed class DatabaseInitializer
     public void Initialize()
     {
         var vectorsPath = ResolvePath(_configuration["Database:VectorsPath"] ?? "data/vectors.db");
-        var modsPath = ResolvePath(_configuration["Database:ModsPath"] ?? "data/mods.db");
 
         EnsureDatabase(vectorsPath);
-        EnsureDatabase(modsPath);
-        ApplyModsSchema(modsPath);
     }
 
-    public static string ResolveModsPath(IConfiguration configuration) =>
-        ResolvePath(configuration["Database:ModsPath"] ?? "data/mods.db");
+    public static string ResolvePoeWikiDbPath(IConfiguration configuration) =>
+        ResolvePath(configuration["Database:PoeWikiDbPath"] ?? "data/poe_wiki.db");
 
     public static string ResolveVectorsPath(IConfiguration configuration) =>
         ResolvePath(configuration["Database:VectorsPath"] ?? "data/vectors.db");
@@ -67,32 +63,5 @@ public sealed class DatabaseInitializer
         connection.Close();
 
         _logger.LogInformation("SQLite database ready at {Path}", Path.GetFullPath(path));
-    }
-
-    private void ApplyModsSchema(string modsPath)
-    {
-        var ddl = LoadEmbeddedSchema();
-        var connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = modsPath,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-        }.ToString();
-
-        using var connection = new SqliteConnection(connectionString);
-        connection.Open();
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = ddl;
-        cmd.ExecuteNonQuery();
-        _logger.LogInformation("Applied mods.db schema");
-    }
-
-    private static string LoadEmbeddedSchema()
-    {
-        var asm = Assembly.GetExecutingAssembly();
-        var resourceName = asm.GetManifestResourceNames()
-            .First(n => n.EndsWith("mods-schema.sql", StringComparison.OrdinalIgnoreCase));
-        using var stream = asm.GetManifestResourceStream(resourceName)!;
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 }
