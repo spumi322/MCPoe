@@ -7,6 +7,7 @@ namespace MCPoe.Infrastructure.PoB;
 public sealed class PoBBridge : IAsyncDisposable
 {
     private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan QuitTimeout = TimeSpan.FromSeconds(2);
 
     private readonly Process _process;
@@ -20,6 +21,8 @@ public sealed class PoBBridge : IAsyncDisposable
         _logger = logger;
         _stderrPump = stderrPump;
     }
+
+    public bool IsAlive => !_disposed && !_process.HasExited;
 
     public static async Task<PoBBridge> StartAsync(
         string luaJitPath,
@@ -115,24 +118,38 @@ public sealed class PoBBridge : IAsyncDisposable
     public async Task<JsonDocument> SendAsync(string action, object? @params, CancellationToken ct)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(PoBBridge));
+        if (_process.HasExited)
+            throw new InvalidOperationException($"LuaJIT process exited before action '{action}'");
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(RequestTimeout);
 
         var payload = new Dictionary<string, object?> { ["action"] = action };
         if (@params is not null) payload["params"] = @params;
         var json = JsonSerializer.Serialize(payload);
 
-        _logger.LogDebug("[lua tx] {Json}", json);
-        await _process.StandardInput.WriteAsync(json).ConfigureAwait(false);
-        await _process.StandardInput.WriteAsync('\n').ConfigureAwait(false);
-        await _process.StandardInput.FlushAsync(ct).ConfigureAwait(false);
-
-        while (true)
+        try
         {
-            var line = await ReadLineAsync(ct).ConfigureAwait(false);
-            if (line is null)
-                throw new InvalidOperationException("LuaJIT process exited while awaiting response");
+            _logger.LogDebug("[lua tx] {Json}", json);
+            await _process.StandardInput.WriteLineAsync(json.AsMemory(), cts.Token).ConfigureAwait(false);
+            await _process.StandardInput.FlushAsync(cts.Token).ConfigureAwait(false);
 
-            if (TryParseJsonObject(line, out var doc))
-                return doc;
+            while (true)
+            {
+                if (_process.HasExited)
+                    throw new InvalidOperationException($"LuaJIT process exited while awaiting action '{action}'");
+
+                var line = await ReadLineAsync(cts.Token).ConfigureAwait(false);
+                if (line is null)
+                    throw new InvalidOperationException("LuaJIT process exited while awaiting response");
+
+                if (TryParseJsonObject(line, out var doc))
+                    return doc;
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException($"PoB action '{action}' timed out after {RequestTimeout.TotalSeconds:0} seconds.");
         }
     }
 
