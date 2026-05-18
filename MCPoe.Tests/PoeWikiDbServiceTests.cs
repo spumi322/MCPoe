@@ -35,9 +35,9 @@ public sealed class PoeWikiDbServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("OK", json.RootElement.GetProperty("status").GetString());
-        Assert.True(json.RootElement.GetProperty("grounded").GetBoolean());
-        Assert.True(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
         Assert.Equal("query_poe_wiki_database", json.RootElement.GetProperty("tool").GetString());
+        Assert.Equal("db", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
+        Assert.Equal("read", json.RootElement.GetProperty("metadata").GetProperty("category").GetString());
         Assert.Equal(100, json.RootElement.GetProperty("results").GetArrayLength());
         Assert.True(json.RootElement.GetProperty("metadata").GetProperty("truncated").GetBoolean());
         Assert.Equal(100, json.RootElement.GetProperty("metadata").GetProperty("rowLimit").GetInt32());
@@ -77,9 +77,8 @@ public sealed class PoeWikiDbServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("REJECTED", json.RootElement.GetProperty("status").GetString());
-        Assert.False(json.RootElement.GetProperty("grounded").GetBoolean());
-        Assert.False(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
         Assert.Equal("query_poe_wiki_database", json.RootElement.GetProperty("tool").GetString());
+        Assert.Equal("db", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
         Assert.True(json.RootElement.TryGetProperty("error", out var error));
         Assert.False(error.ValueKind == JsonValueKind.Null);
     }
@@ -94,7 +93,7 @@ public sealed class PoeWikiDbServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("SQL_ERROR", json.RootElement.GetProperty("status").GetString());
-        Assert.False(json.RootElement.GetProperty("grounded").GetBoolean());
+        Assert.Equal("db", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
         Assert.Contains("missing_column", json.RootElement.GetProperty("error").GetProperty("reason").GetString());
     }
 
@@ -124,7 +123,7 @@ public sealed class PoeWikiDbServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("OK", json.RootElement.GetProperty("status").GetString());
-        Assert.True(json.RootElement.GetProperty("grounded").GetBoolean());
+        Assert.Equal("db", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
         Assert.Equal(1, json.RootElement.GetProperty("results").GetArrayLength());
     }
 

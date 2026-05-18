@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MCPoe.Application.Interfaces;
 using MCPoe.Application.Models;
 using Microsoft.Extensions.Logging;
@@ -24,10 +25,10 @@ public sealed class PoBService : IPoBService
     }
 
     public async Task<string> GetStatusAsync(CancellationToken ct)
-        => await ExecuteToolAsync("pob_status", "ping", null, ct).ConfigureAwait(false);
+        => await ExecuteToolAsync("pob_status", "ping", "session", "pob.status", null, ct).ConfigureAwait(false);
 
     public async Task<string> NewBuildAsync(CancellationToken ct)
-        => await ExecuteToolAsync("pob_new_build", "new_build", null, ct).ConfigureAwait(false);
+        => await ExecuteToolAsync("pob_new_build", "new_build", "session", "pob.new_build", null, ct).ConfigureAwait(false);
 
     public async Task<string> ImportBuildAsync(string source, string? name, CancellationToken ct)
     {
@@ -106,7 +107,7 @@ public sealed class PoBService : IPoBService
     public async Task<string> LoadBuildXmlAsync(string xml, string? name, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(xml))
-            return SerializeToolError("pob_load_build_xml", "load_build_xml", "XML input is required.");
+            return SerializeToolError("pob_load_build_xml", "debug_internal", "XML input is required.");
 
         try
         {
@@ -114,61 +115,100 @@ public sealed class PoBService : IPoBService
                 ? new { xml }
                 : new { xml, name };
 
-            return await ExecuteToolAsync("pob_load_build_xml", "load_build_xml", parameters, ct).ConfigureAwait(false);
+            return await ExecuteToolAsync("pob_load_build_xml", "load_build_xml", "debug_internal", "pob.load_build_xml", parameters, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            return SerializeToolError("pob_load_build_xml", "load_build_xml", ex);
+            return SerializeToolError("pob_load_build_xml", "debug_internal", ex);
         }
     }
 
     public async Task<string> GetBuildInfoAsync(CancellationToken ct)
-        => await ExecuteToolAsync("pob_get_build_info", "get_build_info", null, ct).ConfigureAwait(false);
+        => await ExecuteToolAsync("pob_get_build_info", "get_build_info", "read", "pob.build_info", null, ct).ConfigureAwait(false);
 
     public async Task<string> GetStatsAsync(string[]? fields, CancellationToken ct)
     {
         var parameters = fields is { Length: > 0 } ? new { fields } : null;
-        return await ExecuteToolAsync("pob_get_stats", "get_stats", parameters, ct).ConfigureAwait(false);
+        return await ExecuteToolAsync("pob_get_stats", "get_stats", "read", "pob.stats", parameters, ct).ConfigureAwait(false);
     }
 
-    public async Task<string> ExportBuildXmlAsync(CancellationToken ct)
-        => await ExecuteToolAsync("pob_export_build_xml", "export_build_xml", null, ct).ConfigureAwait(false);
+    public async Task<string> GetConfigAsync(CancellationToken ct)
+        => await ExecuteToolAsync("pob_get_config", "get_config", "read", "pob.config", null, ct).ConfigureAwait(false);
 
-    private async Task<string> ExecuteToolAsync(string tool, string action, object? parameters, CancellationToken ct)
+    public async Task<string> GetTreeAsync(CancellationToken ct)
+        => await ExecuteToolAsync("pob_get_tree", "get_tree", "read", "pob.tree", null, ct).ConfigureAwait(false);
+
+    public async Task<string> SearchNodesAsync(
+        string keyword,
+        string? nodeType,
+        int? maxResults,
+        bool? includeAllocated,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+            return SerializeToolError("pob_search_nodes", "read", "keyword is required.");
+
+        var parameters = new Dictionary<string, object?>
+        {
+            ["keyword"] = keyword
+        };
+
+        if (!string.IsNullOrWhiteSpace(nodeType))
+            parameters["nodeType"] = nodeType;
+        if (maxResults is not null)
+            parameters["maxResults"] = maxResults.Value;
+        if (includeAllocated is not null)
+            parameters["includeAllocated"] = includeAllocated.Value;
+
+        return await ExecuteToolAsync("pob_search_nodes", "search_nodes", "read", "pob.tree_node_search", parameters, ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetItemsAsync(CancellationToken ct)
+        => await ExecuteToolAsync("pob_get_items", "get_items", "read", "pob.items", null, ct).ConfigureAwait(false);
+
+    public async Task<string> GetSkillsAsync(CancellationToken ct)
+        => await ExecuteToolAsync("pob_get_skills", "get_skills", "read", "pob.skills", null, ct).ConfigureAwait(false);
+
+    public async Task<string> ExportBuildXmlAsync(CancellationToken ct)
+        => await ExecuteToolAsync("pob_export_build_xml", "export_build_xml", "session", "pob.export_build_xml", null, ct).ConfigureAwait(false);
+
+    private async Task<string> ExecuteToolAsync(
+        string tool,
+        string action,
+        string category,
+        string resultKind,
+        object? parameters,
+        CancellationToken ct)
     {
         try
         {
             using var result = await _engine.ExecuteAsync(action, parameters, ct).ConfigureAwait(false);
             if (!ResponseOk(result.Response))
-                return SerializeToolError(tool, action, ErrorFrom(result.Response), result.Session);
+                return SerializeToolError(tool, category, ErrorFrom(result.Response), result.Session);
 
-            return SerializeToolResponse("ok", tool, action, result.Session, new[] { Clone(result.Response.RootElement) });
+            return SerializeToolResponse("ok", tool, category, result.Session, new[] { ResultWithKind(resultKind, result.Response.RootElement) });
         }
         catch (Exception ex)
         {
-            return SerializeToolError(tool, action, ex);
+            return SerializeToolError(tool, category, ex);
         }
     }
 
-    private string SerializeToolError(string tool, string query, Exception ex)
+    private string SerializeToolError(string tool, string category, Exception ex)
     {
         _logger.LogError(ex, "{Tool} failed", tool);
-        return SerializeToolError(tool, query, ex.Message);
+        return SerializeToolError(tool, category, ex.Message);
     }
 
-    private string SerializeToolError(string tool, string query, string reason)
-        => SerializeToolError(tool, query, reason, _engine.Snapshot);
+    private string SerializeToolError(string tool, string category, string reason)
+        => SerializeToolError(tool, category, reason, _engine.Snapshot);
 
-    private static string SerializeToolError(string tool, string query, string reason, PoBSessionSnapshot session)
+    private static string SerializeToolError(string tool, string category, string reason, PoBSessionSnapshot pobState)
     {
         return McpToolResponse.Serialize(
             status: "error",
-            grounded: true,
-            mustAnswerFromResults: true,
-            instruction: "PoB action failed. Explain the error and ask for the next valid PoB action if needed.",
             tool: tool,
-            query: query,
-            metadata: new { session },
+            metadata: PoBMetadata(category, pobState),
             results: Array.Empty<object>(),
             error: new McpToolError(reason));
     }
@@ -181,17 +221,8 @@ public sealed class PoBService : IPoBService
     {
         return McpToolResponse.Serialize(
             status: "error",
-            grounded: true,
-            mustAnswerFromResults: true,
-            instruction: "Build import failed. Explain the error and ask for a valid local .xml file path if needed.",
             tool: "pob_import_build",
-            query: "import_build",
-            metadata: new
-            {
-                session = session ?? _engine.Snapshot,
-                import = importMetadata,
-                errorCode
-            },
+            metadata: PoBMetadata("session", session ?? _engine.Snapshot, importMetadata, errorCode),
             results: Array.Empty<object>(),
             error: new McpToolError(reason));
     }
@@ -203,16 +234,13 @@ public sealed class PoBService : IPoBService
     {
         return McpToolResponse.Serialize(
             status: "ok",
-            grounded: true,
-            mustAnswerFromResults: true,
-            instruction: "Use only the returned PoB-backed import metadata and load result.",
             tool: "pob_import_build",
-            query: "import_build",
-            metadata: new { session },
+            metadata: PoBMetadata("session", session, importMetadata),
             results: new[]
             {
                 new
                 {
+                    kind = "pob.import_build",
                     ok = true,
                     import = importMetadata,
                     loadResult
@@ -223,19 +251,40 @@ public sealed class PoBService : IPoBService
     private static string SerializeToolResponse(
         string status,
         string tool,
-        string query,
-        PoBSessionSnapshot session,
+        string category,
+        PoBSessionSnapshot pobState,
         object results)
     {
         return McpToolResponse.Serialize(
             status: status,
-            grounded: true,
-            mustAnswerFromResults: true,
-            instruction: "Use only the returned PoB-backed data. Do not infer unsupported build facts.",
             tool: tool,
-            query: query,
-            metadata: new { session },
+            metadata: PoBMetadata(category, pobState),
             results: results);
+    }
+
+    private static object PoBMetadata(
+        string category,
+        PoBSessionSnapshot pobState,
+        object? import = null,
+        string? errorCode = null) =>
+        new
+        {
+            domain = "pob",
+            category,
+            pobState,
+            import,
+            errorCode
+        };
+
+    private static JsonObject ResultWithKind(string kind, JsonElement element)
+    {
+        var result = JsonNode.Parse(element.GetRawText()) as JsonObject ?? new JsonObject
+        {
+            ["value"] = JsonNode.Parse(element.GetRawText())
+        };
+
+        result["kind"] = kind;
+        return result;
     }
 
     private static JsonElement Clone(JsonElement element) => element.Clone();

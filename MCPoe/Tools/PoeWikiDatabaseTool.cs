@@ -57,12 +57,13 @@ public sealed class PoeWikiDatabaseTool
             _logger.LogError(ex, "query_poe_wiki_database failed");
             return McpToolResponse.Serialize(
                 status: "ERROR",
-                grounded: false,
-                mustAnswerFromResults: false,
-                instruction: "Do not answer from this tool call. The query_poe_wiki_database tool failed.",
                 tool: "query_poe_wiki_database",
-                query: sql,
-                metadata: new { },
+                metadata: new
+                {
+                    domain = "db",
+                    category = "read",
+                    query = sql
+                },
                 results: Array.Empty<object>(),
                 error: new McpToolError(ex.Message));
         }
@@ -84,12 +85,8 @@ public sealed class PoeWikiDatabaseTool
 
             return McpToolResponse.Serialize(
                 status: "OK",
-                grounded: true,
-                mustAnswerFromResults: true,
-                instruction: "Use this DB map to write valid SELECT/WITH SQL for query_poe_wiki_database. Do not answer game-data questions from this map alone.",
                 tool: "get_poe_wiki_database_map",
-                query: string.Empty,
-                metadata: new PoeWikiDbMapMetadata(path, "application/json"),
+                metadata: new PoeWikiDbMapMetadata("db", "read", path, "application/json"),
                 results: new[] { new PoeWikiDbMapResult(dbMap) });
         }
         catch (Exception ex)
@@ -97,18 +94,18 @@ public sealed class PoeWikiDatabaseTool
             _logger.LogError(ex, "get_poe_wiki_database_map failed");
             return McpToolResponse.Serialize(
                 status: "ERROR",
-                grounded: false,
-                mustAnswerFromResults: false,
-                instruction: "Do not answer from this tool call. The PoE Wiki database map could not be read.",
                 tool: "get_poe_wiki_database_map",
-                query: string.Empty,
-                metadata: new { },
+                metadata: new
+                {
+                    domain = "db",
+                    category = "read"
+                },
                 results: Array.Empty<object>(),
                 error: new McpToolError(ex.Message));
         }
     }
 
-    private sealed record PoeWikiDbMapMetadata(string Source, string MimeType);
+    private sealed record PoeWikiDbMapMetadata(string Domain, string Category, string Source, string MimeType);
 
     private sealed record PoeWikiDbMapResult(JsonElement DbMap);
 }

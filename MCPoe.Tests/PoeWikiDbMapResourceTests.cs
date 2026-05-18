@@ -31,9 +31,9 @@ public sealed class PoeWikiDbMapResourceTests
         using var doc = JsonDocument.Parse(result);
         var root = doc.RootElement;
         Assert.Equal("OK", root.GetProperty("status").GetString());
-        Assert.True(root.GetProperty("grounded").GetBoolean());
-        Assert.True(root.GetProperty("mustAnswerFromResults").GetBoolean());
         Assert.Equal("get_poe_wiki_database_map", root.GetProperty("tool").GetString());
+        Assert.Equal("db", root.GetProperty("metadata").GetProperty("domain").GetString());
+        Assert.Equal("read", root.GetProperty("metadata").GetProperty("category").GetString());
         Assert.Equal("application/json", root.GetProperty("metadata").GetProperty("mimeType").GetString());
         Assert.DoesNotContain('/', root.GetProperty("metadata").GetProperty("source").GetString());
 

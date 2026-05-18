@@ -42,8 +42,8 @@ public sealed class PoBEngineManager : IAsyncDisposable
             if (RequiresLoadedBuild(action) && !_hasLoadedBuild)
             {
                 var reason = _stateLostOnLastRestart
-                    ? "PoB engine restarted and the previous in-memory build state was lost. Call pob_new_build or pob_load_build_xml first."
-                    : "No PoB build is loaded. Call pob_new_build or pob_load_build_xml first.";
+                    ? "PoB engine restarted and the previous in-memory build state was lost. Call pob_new_build or pob_import_build first."
+                    : "No PoB build is loaded. Call pob_new_build or pob_import_build first.";
                 throw new InvalidOperationException(reason);
             }
 
@@ -138,7 +138,14 @@ public sealed class PoBEngineManager : IAsyncDisposable
         doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.True;
 
     private static bool RequiresLoadedBuild(string action) =>
-        action is "get_build_info" or "get_stats" or "export_build_xml";
+        action is "get_build_info"
+            or "get_stats"
+            or "get_config"
+            or "get_tree"
+            or "search_nodes"
+            or "get_items"
+            or "get_skills"
+            or "export_build_xml";
 
     private static bool IsBlockedAction(string action) => action == "calc_with";
 

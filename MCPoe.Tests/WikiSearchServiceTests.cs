@@ -36,11 +36,11 @@ public sealed class WikiSearchServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("ERROR", json.RootElement.GetProperty("status").GetString());
-        Assert.False(json.RootElement.GetProperty("grounded").GetBoolean());
-        Assert.False(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
         Assert.Equal("search_wiki", json.RootElement.GetProperty("tool").GetString());
+        Assert.Equal("wiki", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
+        Assert.Equal("read", json.RootElement.GetProperty("metadata").GetProperty("category").GetString());
         Assert.Contains("wiki_embeddings", json.RootElement.GetProperty("error").GetProperty("reason").GetString());
-        Assert.Contains("Do not answer", json.RootElement.GetProperty("instruction").GetString());
+        Assert.False(json.RootElement.TryGetProperty("instruction", out _));
     }
 
     [Fact]
@@ -60,9 +60,9 @@ public sealed class WikiSearchServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("OK", json.RootElement.GetProperty("status").GetString());
-        Assert.True(json.RootElement.GetProperty("grounded").GetBoolean());
-        Assert.True(json.RootElement.GetProperty("mustAnswerFromResults").GetBoolean());
         Assert.Equal("search_wiki", json.RootElement.GetProperty("tool").GetString());
+        Assert.Equal("wiki", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
+        Assert.Equal("read", json.RootElement.GetProperty("metadata").GetProperty("category").GetString());
         Assert.Equal("vector", json.RootElement.GetProperty("metadata").GetProperty("mode").GetString());
         Assert.Equal("Righteous Fire", json.RootElement.GetProperty("results")[0].GetProperty("title").GetString());
         Assert.DoesNotContain("Cold Snap", result);
@@ -88,7 +88,7 @@ public sealed class WikiSearchServiceTests : IDisposable
 
         using var json = JsonDocument.Parse(result);
         Assert.Equal("OK", json.RootElement.GetProperty("status").GetString());
-        Assert.True(json.RootElement.GetProperty("grounded").GetBoolean());
+        Assert.Equal("wiki", json.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
         Assert.Contains("Righteous Fire", result);
         Assert.Contains("source", result);
     }

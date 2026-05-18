@@ -28,10 +28,27 @@ public class PoBBridgeIntegrationTests
         using var created = AssertToolOk(await service.NewBuildAsync(cts.Token));
 
         using var info = AssertToolOk(await service.GetBuildInfoAsync(cts.Token));
+        Assert.Equal("pob.build_info", FirstResult(info).GetProperty("kind").GetString());
         Assert.Equal(JsonValueKind.Object, FirstResult(info).GetProperty("info").ValueKind);
 
         using var stats = AssertToolOk(await service.GetStatsAsync(["Life"], cts.Token));
+        Assert.Equal("pob.stats", FirstResult(stats).GetProperty("kind").GetString());
         Assert.True(FirstResult(stats).GetProperty("stats").GetProperty("Life").GetDouble() > 0);
+
+        using var config = AssertToolOk(await service.GetConfigAsync(cts.Token));
+        Assert.Equal("pob.config", FirstResult(config).GetProperty("kind").GetString());
+
+        using var tree = AssertToolOk(await service.GetTreeAsync(cts.Token));
+        Assert.Equal("pob.tree", FirstResult(tree).GetProperty("kind").GetString());
+
+        using var nodeSearch = AssertToolOk(await service.SearchNodesAsync("life", null, 5, true, cts.Token));
+        Assert.Equal("pob.tree_node_search", FirstResult(nodeSearch).GetProperty("kind").GetString());
+
+        using var items = AssertToolOk(await service.GetItemsAsync(cts.Token));
+        Assert.Equal("pob.items", FirstResult(items).GetProperty("kind").GetString());
+
+        using var skills = AssertToolOk(await service.GetSkillsAsync(cts.Token));
+        Assert.Equal("pob.skills", FirstResult(skills).GetProperty("kind").GetString());
 
         using var exported = AssertToolOk(await service.ExportBuildXmlAsync(cts.Token));
         var xml = FirstResult(exported).GetProperty("xml").GetString();
@@ -47,7 +64,7 @@ public class PoBBridgeIntegrationTests
             Assert.True(importResult.GetProperty("import").GetProperty("loaded").GetBoolean());
             Assert.Equal("local_xml_file", importResult.GetProperty("import").GetProperty("sourceType").GetString());
             Assert.True(importResult.GetProperty("loadResult").GetProperty("ok").GetBoolean());
-            Assert.True(imported.RootElement.GetProperty("metadata").GetProperty("session").GetProperty("hasLoadedBuild").GetBoolean());
+            Assert.True(imported.RootElement.GetProperty("metadata").GetProperty("pobState").GetProperty("hasLoadedBuild").GetBoolean());
         }
         finally
         {
@@ -76,6 +93,7 @@ public class PoBBridgeIntegrationTests
     {
         var doc = JsonDocument.Parse(json);
         Assert.Equal("ok", doc.RootElement.GetProperty("status").GetString());
+        Assert.Equal("pob", doc.RootElement.GetProperty("metadata").GetProperty("domain").GetString());
         Assert.True(FirstResult(doc).GetProperty("ok").GetBoolean());
         return doc;
     }

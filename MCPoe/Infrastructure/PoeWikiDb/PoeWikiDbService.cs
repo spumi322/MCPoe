@@ -45,12 +45,8 @@ public sealed class PoeWikiDbService : IPoeWikiDbService
         {
             return McpToolResponse.Serialize(
                 status: "REJECTED",
-                grounded: false,
-                mustAnswerFromResults: false,
-                instruction: "Do not answer from this tool call. The SQL was rejected before execution.",
                 tool: "query_poe_wiki_database",
-                query: sql,
-                metadata: new PoeWikiQueryMetadata("sql", DefaultRowLimit, 0, false),
+                metadata: new PoeWikiQueryMetadata("db", "read", sql, "sql", DefaultRowLimit, 0, false),
                 results: Array.Empty<object>(),
                 error: new McpToolError(validation.Error));
         }
@@ -88,12 +84,8 @@ public sealed class PoeWikiDbService : IPoeWikiDbService
             var truncated = await reader.ReadAsync(cancellationToken);
             return McpToolResponse.Serialize(
                 status: "OK",
-                grounded: true,
-                mustAnswerFromResults: true,
-                instruction: "Answer only from these SQL rows. If insufficient, call get_poe_wiki_database_map and run another SELECT.",
                 tool: "query_poe_wiki_database",
-                query: validation.Sql!,
-                metadata: new PoeWikiQueryMetadata("sql", DefaultRowLimit, rows.Count, truncated),
+                metadata: new PoeWikiQueryMetadata("db", "read", validation.Sql!, "sql", DefaultRowLimit, rows.Count, truncated),
                 results: rows);
         }
         catch (SqliteException ex)
@@ -101,12 +93,8 @@ public sealed class PoeWikiDbService : IPoeWikiDbService
             _logger.LogWarning(ex, "PoE Wiki database SQL query failed");
             return McpToolResponse.Serialize(
                 status: "SQL_ERROR",
-                grounded: false,
-                mustAnswerFromResults: false,
-                instruction: "Do not answer from this tool call. Fix the SQL using get_poe_wiki_database_map and run another SELECT.",
                 tool: "query_poe_wiki_database",
-                query: validation.Sql!,
-                metadata: new PoeWikiQueryMetadata("sql", DefaultRowLimit, 0, false),
+                metadata: new PoeWikiQueryMetadata("db", "read", validation.Sql!, "sql", DefaultRowLimit, 0, false),
                 results: Array.Empty<object>(),
                 error: new McpToolError(ex.Message));
         }
@@ -266,6 +254,9 @@ public sealed class PoeWikiDbService : IPoeWikiDbService
     private sealed record SqlValidationResult(string? Sql, string? Error);
 
     private sealed record PoeWikiQueryMetadata(
+        string Domain,
+        string Category,
+        string Query,
         string Mode,
         int RowLimit,
         int ReturnedRows,

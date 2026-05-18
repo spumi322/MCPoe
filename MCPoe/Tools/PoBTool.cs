@@ -15,7 +15,7 @@ public sealed class PoBTool
     }
 
     [McpServerTool(Name = "pob_status")]
-    [Description("Start or ping the process-scoped Path of Building engine and return MCPoe session metadata.")]
+    [Description("Start or ping the process-scoped Path of Building engine and return MCPoe PoB state metadata.")]
     public Task<string> GetStatusAsync(CancellationToken ct) =>
         _pobService.GetStatusAsync(ct);
 
@@ -32,8 +32,6 @@ public sealed class PoBTool
         CancellationToken ct = default) =>
         _pobService.ImportBuildAsync(source, name, ct);
 
-    [McpServerTool(Name = "pob_load_build_xml")]
-    [Description("Load raw Path of Building XML into the current process-scoped engine session. This is not share-code or pobb.in import.")]
     public Task<string> LoadBuildXmlAsync(
         [Description("Raw Path of Building XML content.")] string xml,
         [Description("Optional display name for the loaded build.")] string? name = null,
@@ -51,6 +49,36 @@ public sealed class PoBTool
         [Description("Optional PoB stat field names, for example Life or EnergyShield.")] string[]? fields = null,
         CancellationToken ct = default) =>
         _pobService.GetStatsAsync(fields, ct);
+
+    [McpServerTool(Name = "pob_get_config")]
+    [Description("Return current Path of Building config values such as bandit, pantheon, and enemy level.")]
+    public Task<string> GetConfigAsync(CancellationToken ct) =>
+        _pobService.GetConfigAsync(ct);
+
+    [McpServerTool(Name = "pob_get_tree")]
+    [Description("Return the current Path of Building passive tree allocation.")]
+    public Task<string> GetTreeAsync(CancellationToken ct) =>
+        _pobService.GetTreeAsync(ct);
+
+    [McpServerTool(Name = "pob_search_nodes")]
+    [Description("Search passive tree nodes in the currently loaded Path of Building build.")]
+    public Task<string> SearchNodesAsync(
+        [Description("Search text matched against passive node names or stat text.")] string keyword,
+        [Description("Optional passive node type filter.")] string? nodeType = null,
+        [Description("Optional maximum result count.")] int? maxResults = null,
+        [Description("Whether allocated nodes should be included in results.")] bool? includeAllocated = null,
+        CancellationToken ct = default) =>
+        _pobService.SearchNodesAsync(keyword, nodeType, maxResults, includeAllocated, ct);
+
+    [McpServerTool(Name = "pob_get_items")]
+    [Description("Return equipped items, item slots, item text, and flask state for the currently loaded Path of Building build.")]
+    public Task<string> GetItemsAsync(CancellationToken ct) =>
+        _pobService.GetItemsAsync(ct);
+
+    [McpServerTool(Name = "pob_get_skills")]
+    [Description("Return skill socket groups and gems for the currently loaded Path of Building build.")]
+    public Task<string> GetSkillsAsync(CancellationToken ct) =>
+        _pobService.GetSkillsAsync(ct);
 
     [McpServerTool(Name = "pob_export_build_xml")]
     [Description("Export raw XML for the currently loaded Path of Building build.")]

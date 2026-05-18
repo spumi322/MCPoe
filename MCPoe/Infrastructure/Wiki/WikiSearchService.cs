@@ -243,12 +243,18 @@ public sealed class WikiSearchService : IWikiSearchService
 
         return McpToolResponse.Serialize(
             status: "OK",
-            grounded: true,
-            mustAnswerFromResults: true,
-            instruction: "Answer only from the returned chunks. If the chunks do not contain the needed fact, say MCPoe wiki search did not provide enough evidence.",
             tool: "search_wiki",
-            query: query.Trim(),
-            metadata: metadata,
+            metadata: new
+            {
+                domain = "wiki",
+                category = "read",
+                query = query.Trim(),
+                metadata.Mode,
+                metadata.EmbeddingModel,
+                metadata.SearchedChunks,
+                metadata.ReturnedChunks,
+                metadata.MinScore
+            },
             results: results);
     }
 
@@ -256,14 +262,13 @@ public sealed class WikiSearchService : IWikiSearchService
     {
         return McpToolResponse.Serialize(
             status: status,
-            grounded: false,
-            mustAnswerFromResults: false,
-            instruction: status == "NO_RESULTS"
-                ? "Do not infer unsupported mechanics from this tool call. Tell the user MCPoe wiki search found no grounded result."
-                : "Do not answer using MCPoe wiki data from this tool call. Tell the user the wiki search tool failed and include the reason.",
             tool: "search_wiki",
-            query: query.Trim(),
-            metadata: new { },
+            metadata: new
+            {
+                domain = "wiki",
+                category = "read",
+                query = query.Trim()
+            },
             results: Array.Empty<object>(),
             error: new McpToolError(reason));
     }
