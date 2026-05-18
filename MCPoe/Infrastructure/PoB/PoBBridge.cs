@@ -130,7 +130,10 @@ public sealed class PoBBridge : IAsyncDisposable
 
         try
         {
-            _logger.LogDebug("[lua tx] {Json}", json);
+            if (action == "load_build_xml")
+                _logger.LogDebug("[lua tx] action={Action} params omitted", action);
+            else
+                _logger.LogDebug("[lua tx] {Json}", json);
             await _process.StandardInput.WriteLineAsync(json.AsMemory(), cts.Token).ConfigureAwait(false);
             await _process.StandardInput.FlushAsync(cts.Token).ConfigureAwait(false);
 

@@ -7,12 +7,19 @@ namespace MCPoe.Infrastructure.PoB;
 
 public sealed class PoBService : IPoBService
 {
+    private const long MaxImportXmlBytes = 25L * 1024L * 1024L;
+
     private readonly PoBEngineManager _engine;
+    private readonly BuildImportSourceClassifier _importSourceClassifier;
     private readonly ILogger<PoBService> _logger;
 
-    public PoBService(PoBEngineManager engine, ILogger<PoBService> logger)
+    public PoBService(
+        PoBEngineManager engine,
+        BuildImportSourceClassifier importSourceClassifier,
+        ILogger<PoBService> logger)
     {
         _engine = engine;
+        _importSourceClassifier = importSourceClassifier;
         _logger = logger;
     }
 
@@ -21,6 +28,80 @@ public sealed class PoBService : IPoBService
 
     public async Task<string> NewBuildAsync(CancellationToken ct)
         => await ExecuteToolAsync("pob_new_build", "new_build", null, ct).ConfigureAwait(false);
+
+    public async Task<string> ImportBuildAsync(string source, string? name, CancellationToken ct)
+    {
+        var classification = _importSourceClassifier.Classify(source);
+        var importMetadata = ImportMetadata(classification);
+
+        if (classification.SourceType != BuildImportSourceType.LocalXmlFile)
+        {
+            return SerializeImportError(
+                "unsupported_source",
+                "This preview only supports local .xml files.",
+                importMetadata);
+        }
+
+        var resolvedPath = classification.ResolvedPath!;
+        FileInfo fileInfo;
+        try
+        {
+            fileInfo = new FileInfo(resolvedPath);
+            if (fileInfo.Length > MaxImportXmlBytes)
+            {
+                return SerializeImportError(
+                    "invalid_local_xml",
+                    $"XML file is too large for this preview ({fileInfo.Length} bytes, limit {MaxImportXmlBytes} bytes).",
+                    ImportMetadata(classification, xmlBytes: fileInfo.Length));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            return SerializeImportError("read_failed", $"Failed to inspect XML file: {ex.Message}", importMetadata);
+        }
+
+        string xml;
+        try
+        {
+            xml = await File.ReadAllTextAsync(resolvedPath, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            return SerializeImportError("read_failed", $"Failed to read XML file: {ex.Message}", importMetadata);
+        }
+
+        importMetadata = ImportMetadata(classification, xmlBytes: fileInfo.Length);
+        var validationError = ValidateImportXml(xml);
+        if (validationError is not null)
+            return SerializeImportError("invalid_local_xml", validationError, importMetadata);
+
+        try
+        {
+            object parameters = string.IsNullOrWhiteSpace(name)
+                ? new { xml }
+                : new { xml, name };
+
+            using var result = await _engine.ExecuteAsync("load_build_xml", parameters, ct).ConfigureAwait(false);
+            if (!ResponseOk(result.Response))
+            {
+                return SerializeImportError(
+                    "load_failed",
+                    $"PoB failed to load XML: {ErrorFrom(result.Response)}",
+                    importMetadata,
+                    result.Session);
+            }
+
+            return SerializeImportSuccess(
+                ImportMetadata(classification, xmlBytes: fileInfo.Length, loaded: true),
+                result.Session,
+                Clone(result.Response.RootElement));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "pob_import_build failed to load local XML file");
+            return SerializeImportError("load_failed", $"PoB failed to load XML: {ex.Message}", importMetadata);
+        }
+    }
 
     public async Task<string> LoadBuildXmlAsync(string xml, string? name, CancellationToken ct)
     {
@@ -92,6 +173,53 @@ public sealed class PoBService : IPoBService
             error: new McpToolError(reason));
     }
 
+    private string SerializeImportError(
+        string errorCode,
+        string reason,
+        object importMetadata,
+        PoBSessionSnapshot? session = null)
+    {
+        return McpToolResponse.Serialize(
+            status: "error",
+            grounded: true,
+            mustAnswerFromResults: true,
+            instruction: "Build import failed. Explain the error and ask for a valid local .xml file path if needed.",
+            tool: "pob_import_build",
+            query: "import_build",
+            metadata: new
+            {
+                session = session ?? _engine.Snapshot,
+                import = importMetadata,
+                errorCode
+            },
+            results: Array.Empty<object>(),
+            error: new McpToolError(reason));
+    }
+
+    private static string SerializeImportSuccess(
+        object importMetadata,
+        PoBSessionSnapshot session,
+        JsonElement loadResult)
+    {
+        return McpToolResponse.Serialize(
+            status: "ok",
+            grounded: true,
+            mustAnswerFromResults: true,
+            instruction: "Use only the returned PoB-backed import metadata and load result.",
+            tool: "pob_import_build",
+            query: "import_build",
+            metadata: new { session },
+            results: new[]
+            {
+                new
+                {
+                    ok = true,
+                    import = importMetadata,
+                    loadResult
+                }
+            });
+    }
+
     private static string SerializeToolResponse(
         string status,
         string tool,
@@ -111,6 +239,37 @@ public sealed class PoBService : IPoBService
     }
 
     private static JsonElement Clone(JsonElement element) => element.Clone();
+
+    private static object ImportMetadata(
+        BuildImportSourceClassification classification,
+        long? xmlBytes = null,
+        bool? loaded = null) =>
+        new
+        {
+            sourceType = BuildImportSourceClassifier.ToJsonName(classification.SourceType),
+            resolvedFrom = classification.ResolvedPath,
+            xmlBytes,
+            loaded,
+            supported = classification.SourceType == BuildImportSourceType.LocalXmlFile
+        };
+
+    private static string? ValidateImportXml(string xml)
+    {
+        if (string.IsNullOrWhiteSpace(xml))
+            return "XML file is empty.";
+
+        var trimmed = xml.AsSpan().TrimStart();
+        if (trimmed.Length < 32)
+            return "XML file is too small to be a Path of Building build.";
+
+        if (!trimmed.StartsWith("<", StringComparison.Ordinal))
+            return "XML file does not start with XML markup.";
+
+        if (!xml.Contains("<PathOfBuilding", StringComparison.OrdinalIgnoreCase))
+            return "File does not look like a Path of Building XML file.";
+
+        return null;
+    }
 
     private static bool ResponseOk(JsonDocument doc) =>
         doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.True;

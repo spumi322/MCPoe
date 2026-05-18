@@ -62,6 +62,7 @@ try
     builder.Services.AddSingleton<IWikiSearchService, WikiSearchService>();
     builder.Services.AddSingleton<IPoeWikiDbService, PoeWikiDbService>();
     builder.Services.AddSingleton<PoBEngineManager>();
+    builder.Services.AddSingleton<BuildImportSourceClassifier>();
     builder.Services.AddSingleton<IPoBService, PoBService>();
     builder.Services.AddSingleton<DatabaseInitializer>();
 

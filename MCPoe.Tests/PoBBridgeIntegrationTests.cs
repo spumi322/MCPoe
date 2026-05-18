@@ -34,7 +34,26 @@ public class PoBBridgeIntegrationTests
         Assert.True(FirstResult(stats).GetProperty("stats").GetProperty("Life").GetDouble() > 0);
 
         using var exported = AssertToolOk(await service.ExportBuildXmlAsync(cts.Token));
-        Assert.False(string.IsNullOrWhiteSpace(FirstResult(exported).GetProperty("xml").GetString()));
+        var xml = FirstResult(exported).GetProperty("xml").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(xml));
+
+        var xmlPath = Path.Combine(Path.GetTempPath(), "mcpoe-import-" + Guid.NewGuid().ToString("N") + ".xml");
+        try
+        {
+            await File.WriteAllTextAsync(xmlPath, xml, cts.Token);
+
+            using var imported = AssertToolOk(await service.ImportBuildAsync(xmlPath, "Imported Test", cts.Token));
+            var importResult = FirstResult(imported);
+            Assert.True(importResult.GetProperty("import").GetProperty("loaded").GetBoolean());
+            Assert.Equal("local_xml_file", importResult.GetProperty("import").GetProperty("sourceType").GetString());
+            Assert.True(importResult.GetProperty("loadResult").GetProperty("ok").GetBoolean());
+            Assert.True(imported.RootElement.GetProperty("metadata").GetProperty("session").GetProperty("hasLoadedBuild").GetBoolean());
+        }
+        finally
+        {
+            if (File.Exists(xmlPath))
+                File.Delete(xmlPath);
+        }
     }
 
     private static PoBEngineManager CreateEngine()
@@ -51,7 +70,7 @@ public class PoBBridgeIntegrationTests
     }
 
     private static PoBService CreateService(PoBEngineManager engine) =>
-        new(engine, NullLogger<PoBService>.Instance);
+        new(engine, new BuildImportSourceClassifier(), NullLogger<PoBService>.Instance);
 
     private static JsonDocument AssertToolOk(string json)
     {

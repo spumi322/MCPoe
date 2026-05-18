@@ -24,6 +24,14 @@ public sealed class PoBTool
     public Task<string> NewBuildAsync(CancellationToken ct) =>
         _pobService.NewBuildAsync(ct);
 
+    [McpServerTool(Name = "pob_import_build")]
+    [Description("Import a Path of Building build from a local .xml file path. This preview does not import URLs, PoB share codes, pasted raw XML, or text files.")]
+    public Task<string> ImportBuildAsync(
+        [Description("Local Path of Building .xml file path.")] string source,
+        [Description("Optional display name for the loaded build.")] string? name = null,
+        CancellationToken ct = default) =>
+        _pobService.ImportBuildAsync(source, name, ct);
+
     [McpServerTool(Name = "pob_load_build_xml")]
     [Description("Load raw Path of Building XML into the current process-scoped engine session. This is not share-code or pobb.in import.")]
     public Task<string> LoadBuildXmlAsync(
@@ -49,4 +57,3 @@ public sealed class PoBTool
     public Task<string> ExportBuildXmlAsync(CancellationToken ct) =>
         _pobService.ExportBuildXmlAsync(ct);
 }
-
