@@ -15,7 +15,7 @@ public class PoBBridgeIntegrationTests
         File.Exists(Path.Combine(PobSrcPath, "HeadlessWrapper.lua"));
 
     [SkippableFact]
-    public async Task Pob_preview_tool_flow_returns_real_info_stats_and_xml()
+    public async Task Pob_preview_tool_flow_exports_and_reimports_xml()
     {
         Skip.IfNot(EnvAvailable, "LuaJIT or PoB fork not present on this machine");
 
@@ -26,12 +26,6 @@ public class PoBBridgeIntegrationTests
 
         using var status = AssertToolOk(await service.GetStatusAsync(cts.Token));
         using var created = AssertToolOk(await service.NewBuildAsync(cts.Token));
-
-        using var info = AssertToolOk(await service.GetBuildInfoAsync(cts.Token));
-        Assert.Equal(JsonValueKind.Object, FirstResult(info).GetProperty("info").ValueKind);
-
-        using var stats = AssertToolOk(await service.GetStatsAsync(["Life"], cts.Token));
-        Assert.True(FirstResult(stats).GetProperty("stats").GetProperty("Life").GetDouble() > 0);
 
         using var exported = AssertToolOk(await service.ExportBuildXmlAsync(cts.Token));
         var xml = FirstResult(exported).GetProperty("xml").GetString();

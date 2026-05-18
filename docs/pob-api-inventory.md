@@ -1,5 +1,7 @@
 # PoB Headless API Inventory
 
+> Legacy action inventory. Useful as historical context for the old upstream headless API, but not the source of truth for the new agent-facing map. Current map work starts at `docs/pob_agent_overview.md` and `docs/pob_agent_p2_static_inventory.md`.
+
 This inventory describes the callable surface currently exposed by the local Path of Building fork at:
 
 - `G:/Code/utils/PathOfBuilding/src/HeadlessWrapper.lua`

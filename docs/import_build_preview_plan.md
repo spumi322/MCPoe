@@ -1,5 +1,7 @@
 # MCPoe Disk XML Build Import Preview Plan
 
+> Historical import-build plan. Keep for implementation context only. Current PoB agent-substrate planning starts with `docs/pob_agent_overview.md`.
+
 ## Goal
 
 Add one user-facing import tool that loads a Path of Building XML file from disk.

@@ -1,5 +1,7 @@
 # PoB Integration Preplan
 
+> Historical preview plan. This foundation work has been superseded by the PoB agent-substrate plan. For current work, start with `docs/pob_agent_overview.md`.
+
 ## Goal
 
 Build the PoB integration foundation for MCPoe:

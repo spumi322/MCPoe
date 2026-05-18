@@ -1,5 +1,7 @@
 # PoB Read Tools Preview Plan
 
+> Superseded plan. Do not implement broad hand-written PoB read tools from this document. Current direction is `pob_get_api_map` plus `pob_exec_lua`; start with `docs/pob_agent_overview.md`.
+
 ## Goal
 
 Prepare the PoB MCP tool surface for bulk read-tool implementation.

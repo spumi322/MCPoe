@@ -116,13 +116,6 @@ public sealed class PoBEngineManager : IAsyncDisposable
             return;
         }
 
-        if (action == "get_build_info" &&
-            response.TryGetProperty("info", out var info) &&
-            info.TryGetProperty("name", out var name) &&
-            name.ValueKind == JsonValueKind.String)
-        {
-            _buildName = name.GetString();
-        }
     }
 
     private PoBSessionSnapshot CreateSnapshot() =>
@@ -138,7 +131,7 @@ public sealed class PoBEngineManager : IAsyncDisposable
         doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.True;
 
     private static bool RequiresLoadedBuild(string action) =>
-        action is "get_build_info" or "get_stats" or "export_build_xml";
+        action is "export_build_xml";
 
     private static bool IsBlockedAction(string action) => action == "calc_with";
 

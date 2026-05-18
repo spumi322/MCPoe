@@ -1,5 +1,7 @@
 # MCPoe -- P1a: Headless PoB Bridge (Proof of Concept)
 
+> Historical POC note. This document is retained as bridge background, not as the current PoB tool plan. For current PoB agent-substrate work, start with `docs/pob_agent_overview.md`.
+
 ## Context
 
 MCPoe is a C# MCP server (.NET 10, stdio transport) for Path of Exile build analysis. P0 is complete: the solution builds, has Serilog file logging, interface-driven DI, and stub tools including `calculate_build`.

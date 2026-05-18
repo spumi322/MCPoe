@@ -122,15 +122,6 @@ public sealed class PoBService : IPoBService
         }
     }
 
-    public async Task<string> GetBuildInfoAsync(CancellationToken ct)
-        => await ExecuteToolAsync("pob_get_build_info", "get_build_info", null, ct).ConfigureAwait(false);
-
-    public async Task<string> GetStatsAsync(string[]? fields, CancellationToken ct)
-    {
-        var parameters = fields is { Length: > 0 } ? new { fields } : null;
-        return await ExecuteToolAsync("pob_get_stats", "get_stats", parameters, ct).ConfigureAwait(false);
-    }
-
     public async Task<string> ExportBuildXmlAsync(CancellationToken ct)
         => await ExecuteToolAsync("pob_export_build_xml", "export_build_xml", null, ct).ConfigureAwait(false);
 

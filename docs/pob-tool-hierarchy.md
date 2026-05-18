@@ -1,5 +1,7 @@
 # PoB Tool Hierarchy
 
+> Legacy tool hierarchy. This categorizes the old headless action surface and should not drive new tool implementation. Current PoB agent-substrate work starts with `docs/pob_agent_overview.md`.
+
 This document categorizes the existing PoB headless API actions from `docs/pob-api-inventory.md`.
 
 It also lists implemented MCPoe custom wrapper tools where they replace raw headless actions.
